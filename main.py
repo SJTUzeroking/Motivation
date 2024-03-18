@@ -1,9 +1,10 @@
 import sys
 import json
 import os
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QCalendarWidget, QTableWidget, QTableWidgetItem, QMessageBox, QDialog, QHeaderView, QListWidget
-from PyQt5.QtCore import QDate, Qt, QDateTime
-from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QCalendarWidget, QTableWidget, QTableWidgetItem, QMessageBox, QDialog, QHeaderView, QListWidget, QProgressBar
+from PyQt5.QtCore import QDate, Qt, QDateTime, QSize
+from PyQt5.QtGui import QIcon, QPixmap
+
 
 def resource_path(relative_path):
     """
@@ -97,24 +98,38 @@ class GoalManager(QWidget):
         buttons_layout = QHBoxLayout()
 
         # 已完成目标按钮
-        self.completed_goals_button = QPushButton("已完成目标")
+        self.completed_goals_button = QPushButton()
+        self.completed_goals_button.setIcon(QIcon(resource_path('./icons/complete.png')))  # 设置图标
+        self.completed_goals_button.setText("已完成目标")  # 设置按钮文本
         self.completed_goals_button.clicked.connect(self.show_completed_goals)
         self.completed_goals_button.setFixedHeight(50)
         self.set_border_radius(self.completed_goals_button)
         buttons_layout.addWidget(self.completed_goals_button)
 
         # 目标记录按钮
-        self.record_button = QPushButton("目标记录")
+        self.record_button = QPushButton()
+        self.record_button.setIcon(QIcon(resource_path('./icons/rizhi.png')))  # 设置图标
+        self.record_button.setText("目标记录")  # 设置按钮文本
         self.record_button.clicked.connect(self.show_user_actions)
         self.record_button.setFixedHeight(50)
         self.set_border_radius(self.record_button)
         buttons_layout.addWidget(self.record_button)
 
+        self.logo_button = QPushButton()
+        icon = QIcon(resource_path('./icons/logo.ico'))  # 设置图标
+        self.logo_button.setFixedSize(50, 50)
+        icon_size = QSize(50, 50)  # 设置图标大小
+        self.logo_button.setIcon(icon)
+        self.logo_button.setIconSize(icon_size)
+        self.logo_button.setStyleSheet("background-color: transparent; border: none;")
+        self.logo_button.clicked.connect(self.show_logo)
+        buttons_layout.addWidget(self.logo_button)
+
         right_layout.addLayout(buttons_layout)
 
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
-        right_widget.setFixedWidth(650)  # 设置右侧组件宽度
+        right_widget.setFixedWidth(700)  # 设置右侧组件宽度
 
         # 将左侧和右侧组件添加到主布局
         layout.addWidget(left_widget)
@@ -130,7 +145,7 @@ class GoalManager(QWidget):
         self.deadline_label.setText(date.toString("yyyy-MM-dd"))
 
     def set_border_radius(self, widget):
-        widget.setStyleSheet("border: 2px solid #008080; border-radius: 5px;")  # 设置边框样式和圆角
+        widget.setStyleSheet("border: 2px solid #5171F0; border-radius: 5px;")  # 设置边框样式和圆角
 
     def update_goals_list(self):
         """
@@ -149,35 +164,46 @@ class GoalManager(QWidget):
             add_button = QPushButton()
             add_button.setIcon(QIcon(resource_path('./icons/add.png')))  # 设置图标
             add_button.clicked.connect(lambda _, g=goal: self.add_completed_times(g))
+            add_button.setFixedWidth(50)
 
             edit_button = QPushButton()
             edit_button.setIcon(QIcon(resource_path('./icons/edit.png')))  # 设置图标
             edit_button.clicked.connect(lambda _, g=goal: self.edit_goal(g))
+            edit_button.setFixedWidth(50)
 
             delete_button = QPushButton()
             delete_button.setIcon(QIcon(resource_path('./icons/delete.png')))  # 设置图标
             delete_button.clicked.connect(lambda _, g=goal: self.confirm_delete_goal(g))
+            delete_button.setFixedWidth(50)
 
             reduce_button = QPushButton()
             reduce_button.setIcon(QIcon(resource_path('./icons/undo.png')))  # 设置图标
             reduce_button.clicked.connect(lambda _, g=goal: self.reduce_completed_times(g))
+            reduce_button.setFixedWidth(50)
 
-            # 将操作按钮放置在水平布局中
+            # 创建进度条
+            progress_bar = QProgressBar()
+            progress_bar.setRange(0, goal['target_times'])  # 设置进度条范围
+            progress_bar.setValue(goal['completed_times'])  # 设置进度条当前值
+            progress_bar.setFormat(f"{goal['completed_times']}/{goal['target_times']}")  # 设置进度条上方文字显示
+            progress_bar.setFixedWidth(80)  # 设置进度条的默认长度
+
+            # 将操作按钮和进度条放置在水平布局中
             btn_layout = QHBoxLayout()
             btn_layout.addWidget(add_button)
             btn_layout.addWidget(edit_button)
             btn_layout.addWidget(delete_button)
             btn_layout.addWidget(reduce_button)
+            btn_layout.addWidget(progress_bar)
 
-            # 创建一个容器并设置水平布局
             btn_widget = QWidget()
             btn_widget.setLayout(btn_layout)
 
-            # 将操作按钮添加到表格的单元格中
+            # 将操作按钮和进度条添加到表格的单元格中
             self.goals_table.setCellWidget(row, 3, btn_widget)
 
         # 设置表格列宽
-        column_widths = [150, 150, 70, 230]
+        column_widths = [130, 130, 70, 320]
         for i, width in enumerate(column_widths):
             self.goals_table.horizontalHeader().setSectionResizeMode(i, QHeaderView.Fixed)
             self.goals_table.horizontalHeader().resizeSection(i, width)
@@ -492,6 +518,31 @@ class GoalManager(QWidget):
 
         dialog.setLayout(layout)
         dialog.resize(700, 450)
+        dialog.exec_()
+
+    def show_logo(self):
+        dialog = QDialog()
+        dialog.setWindowTitle("About")
+        dialog.setWindowIcon(QIcon(resource_path('./icons/logo.ico')))
+        layout = QVBoxLayout(dialog)
+
+        # 添加程序logo
+        logo_label = QLabel(dialog)
+        logo_pixmap = QPixmap(resource_path('./icons/logo.ico')).scaledToWidth(100)
+        logo_label.setPixmap(logo_pixmap)
+        layout.addWidget(logo_label, alignment=Qt.AlignCenter)
+
+        # 添加GitHub链接
+        github_label = QLabel("<a href='https://github.com/SJTUzeroking'>GitHub</a>", dialog)
+        github_label.setOpenExternalLinks(True)
+        layout.addWidget(github_label, alignment=Qt.AlignCenter)
+
+        # 添加作者信息
+        author_label = QLabel("Developed By Zou Ruoqin", dialog)
+        layout.addWidget(author_label, alignment=Qt.AlignCenter)
+
+        dialog.setLayout(layout)
+        dialog.resize(300, 150)
         dialog.exec_()
 
     def closeEvent(self, event):
